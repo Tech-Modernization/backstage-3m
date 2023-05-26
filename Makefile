@@ -26,7 +26,8 @@ ciInfra: _tffmt _tfinit _tflint _tfvalidate _checkov _tfplan
 
 bootstrap: ## Ran first to initially bootstrap
 	$(COMPOSE_RUN_NODE) make _bootstrap
-	$(COMPOSE_RUN_YQ) make _bootstrap
+	$(COMPOSE_RUN_YQ) e '.app |= (. + {"listen": {"host": "0.0.0.0" } })' -i app-config.yaml
+	$(COMPOSE_RUN_YQ) e '.backend.listen |= (. + {"host": "0.0.0.0" })' -i app-config.yaml
 .PHONY: bootstrap
 
 _bootstrap:
