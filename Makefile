@@ -1,5 +1,6 @@
 .DEFAULT_GOAL := help
 COMPOSE_RUN_NODE := docker compose run --rm node
+COMPOSE_RUN_YQ := docker compose run --rm yq
 COMPOSE_RUN_TF := docker compose run --rm terraform
 COMPOSE_RUN_TFLINT := docker compose run --rm tflint
 COMPOSE_RUN_CHECKOV := docker compose run --rm checkov
@@ -25,12 +26,18 @@ ciInfra: _tffmt _tfinit _tflint _tfvalidate _checkov _tfplan
 
 bootstrap: ## Ran first to initially bootstrap
 	$(COMPOSE_RUN_NODE) make _bootstrap
+	$(COMPOSE_RUN_YQ) make _bootstrap
 .PHONY: bootstrap
 
 _bootstrap:
 	npx @backstage/create-app@latest --path .
-	git restore .gitignore README.md
+	git restore .gitignore .prettierignore README.md
 .PHONY: _bootstrap
+
+_configure:
+	yq e '.app |= (. + {"listen": {"host": "0.0.0.0" } })' -i app-config.yaml
+	yq e '.backend.listen |= (. + {"host": "0.0.0.0" })' -i app-config.yaml
+.PHONY: _configure
 
 envfile: ## generate a .env file
 	cp -f $(ENVFILE) .env

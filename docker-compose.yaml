@@ -62,6 +62,15 @@ services:
       - .:/opt/app
     working_dir: /opt/app
     env_file: .env
+  yq:
+    image: mikefarah/yq:4
+    profiles:
+      - build
+    volumes:
+      - .:/opt/app
+    working_dir: /opt/app
+    env_file: .env
+    command: sh
 networks:
   default:
     name: backstage

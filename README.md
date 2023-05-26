@@ -1,4 +1,5 @@
 # [Backstage](https://backstage.io) with [3 Musketeers](https://3musketeers.io)
+
 Spotify Backstage accelerator to generate a 3 Musketeers friendly Backstage application
 
 ## Bootstrapping
@@ -12,6 +13,7 @@ make bootstrap
 ## Development
 
 To get started running locally, execute the following:
+
 ```sh
 ENVFILE=env.example make envfile
 make deps
