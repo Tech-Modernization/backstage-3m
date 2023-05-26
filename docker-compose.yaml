@@ -44,6 +44,7 @@ services:
     volumes:
       - .:/opt/app
       - ~/.aws/:/root/.aws/
+      - ~/.gitconfig:/root/.gitconfig
     working_dir: /opt/app/infra
     env_file: .env
   tflint:
