@@ -1,0 +1,22 @@
+name: Infra
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+    branches:
+      - main
+    paths-ignore:
+      - 'Makefile'
+      - 'docker-compose.yaml'
+      - '.checkov.yaml'
+      - '.terraform.version'
+      - '.github/workflows/infra.yml'
+      - 'infra/**'
+
+permissions: read-all
+
+jobs:
+  infra:
+    runs-on: ubuntu-latest
+    steps:
+      - run: 'echo "No build required"'

@@ -1,0 +1,12 @@
+compact: true
+download-external-modules: true
+repo-id: Tech-Modernization/backstage-3m
+skip-path:
+  - ./infra/tfplan.json
+summary-position: bottom
+quiet: true
+directory:
+  - .
+output:
+  - cli
+  - sarif

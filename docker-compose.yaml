@@ -1,0 +1,67 @@
+services:
+  backstage:
+    build:
+      context: .
+      dockerfile: ./packages/backend/Dockerfile
+    image: tech-modernization/backstage-3m:local
+    profiles:
+      - docker
+    volumes:
+      - ~/.aws/:/home/node/.aws/
+    ports:
+      - 7007:7007
+    env_file: .env
+    depends_on:
+      - backstagedb
+  node:
+    image: node:16
+    user: node
+    profiles:
+      - node
+    volumes:
+      - .:/opt/app
+      - ./.gitconfig:/home/node/.gitconfig:ro
+      - ~/.cache:/home/node/.cache
+      - ~/.aws/:/home/node/.aws/
+    ports:
+      - 3000:3000
+      - 7007:7007
+    working_dir: /opt/app
+    command: ${COMPOSE_COMMAND:-bash}
+    env_file: .env
+  backstagedb:
+    container_name: backstagedb
+    image: 'postgres:11'
+    env_file: .env
+    ports:
+      - 5432:5432
+    volumes:
+      - '${DB_LOCAL_PATH}:/var/lib/postgresql/data'
+  terraform:
+    image: hashicorp/terraform:1.4.0
+    profiles:
+      - build
+    volumes:
+      - .:/opt/app
+      - ~/.aws/:/root/.aws/
+    working_dir: /opt/app/infra
+    env_file: .env
+  tflint:
+    image: ghcr.io/terraform-linters/tflint:v0.45.0
+    profiles:
+      - build
+    volumes:
+      - .:/opt/app
+    working_dir: /opt/app/infra
+    env_file: .env
+  checkov:
+    image: bridgecrew/checkov:2
+    profiles:
+      - build
+    volumes:
+      - .:/opt/app
+    working_dir: /opt/app
+    env_file: .env
+networks:
+  default:
+    name: backstage

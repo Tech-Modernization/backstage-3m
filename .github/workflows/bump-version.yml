@@ -1,0 +1,37 @@
+name: Bump Version
+
+on:
+  workflow_run:
+    workflows:
+      - App
+    branches:
+      - main
+    types:
+      - completed
+
+permissions: read-all
+
+jobs:
+  # FINAL STEP IF ALL ELSE SUCCEEDS BEFORE TAGGING
+  bump_version:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          ssh-key: ${{ secrets.PUSH_TAGS_PRIVATE_KEY }} # https://docs.github.com/en/actions/security-guides/automatic-token-authentication#using-the-github_token-in-a-workflow
+          persist-credentials: true
+          fetch-depth: '0'
+      - name: Bump version
+        id: bump-version
+        uses: anothrNick/github-tag-action@1.61.0
+        env:
+          RELEASE_BRANCHES: main
+          DRY_RUN: true
+      - name: Push tag
+        run: |
+          echo New Tag = ${{ steps.bump-version.outputs.new_tag }}
+          git tag ${{ steps.bump-version.outputs.new_tag }}
+          git push origin ${{ steps.bump-version.outputs.new_tag }}
