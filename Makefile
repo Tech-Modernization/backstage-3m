@@ -31,7 +31,7 @@ bootstrap: ## Ran first to initially bootstrap
 
 _bootstrap:
 	npx @backstage/create-app@latest --path .
-	git restore .gitignore .prettierignore README.md
+	git checkout -- .gitignore .prettierignore README.md
 .PHONY: _bootstrap
 
 _configure:
