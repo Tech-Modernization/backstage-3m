@@ -29,6 +29,7 @@ bootstrap: ## Ran first to initially bootstrap
 
 _bootstrap:
 	npx @backstage/create-app@latest --path .
+	git restore .gitignore README.md
 .PHONY: _bootstrap
 
 envfile: ## generate a .env file
