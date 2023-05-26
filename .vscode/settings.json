@@ -1,5 +1,0 @@
-{
-    "yaml.schemas": {
-        "https://json.schemastore.org/github-workflow.json": "file:///Users/907929/work/cognizant/backstage/.github/workflows/deploy.yml"
-    }
-}
