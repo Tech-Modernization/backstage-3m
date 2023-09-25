@@ -84,7 +84,7 @@ module "aurora_postgresql" {
   vpc_id                = data.aws_vpc.cloudboost.id
   subnets               = data.aws_subnets.private.ids
   create_security_group = true
-  allowed_cidr_blocks   = values(data.aws_subnet.private).*.cidr_block
+  allowed_cidr_blocks   = values(data.aws_subnet.private)[*].cidr_block
 
   # monitoring_interval = 60
 
