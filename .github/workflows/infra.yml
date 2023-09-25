@@ -5,18 +5,18 @@ on:
     branches:
       - main
     paths-ignore:
-      - '**.md'
+      - "**.md"
   pull_request:
     types: [opened, reopened, synchronize]
     branches:
       - main
     paths:
-      - 'Makefile'
-      - 'docker-compose.yaml'
-      - '.checkov.yaml'
-      - '.terraform.version'
-      - '.github/workflows/infra.yml'
-      - 'infra/**'
+      - "Makefile"
+      - "docker-compose.yaml"
+      - ".checkov.yaml"
+      - ".terraform.version"
+      - ".github/workflows/infra.yml"
+      - "infra/**"
 
 env:
   REGISTRY: ghcr.io
@@ -44,7 +44,7 @@ jobs:
           node-version-file: .nvmrc
       - uses: hashicorp/setup-terraform@v2
         with:
-          terraform_version: 1.4
+          terraform_version: 1.5
       - uses: actions/cache@v3
         name: Cache plugin dir
         with:
@@ -53,7 +53,7 @@ jobs:
       - uses: terraform-linters/setup-tflint@v3
         name: Setup TFLint
         with:
-          tflint_version: v0.45.0
+          tflint_version: v0.48.0
 
       - name: Terraform fmt
         id: fmt
