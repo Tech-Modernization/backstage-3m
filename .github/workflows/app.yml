@@ -5,16 +5,16 @@ on:
     branches:
       - main
     paths-ignore:
-      - '**.md'
+      - "**.md"
   pull_request:
     types: [opened, reopened, synchronize]
     branches:
       - main
     paths-ignore:
-      - '**.md'
-      - 'infra/**'
-      - '.terraform-version'
-      - '.github/workflows/infra.yml'
+      - "**.md"
+      - "infra/**"
+      - ".terraform-version"
+      - ".github/workflows/infra.yml"
 
 env:
   REGISTRY: ghcr.io
@@ -35,9 +35,9 @@ jobs:
         id: node
         uses: actions/setup-node@v3
         with:
-          node-version-file: '.nvmrc'
+          node-version-file: ".nvmrc"
       - name: yarn install
-        uses: backstage/actions/yarn-install@v0.6.3
+        uses: backstage/actions/yarn-install@v0.6.4
         with:
           cache-prefix: ${{ runner.os }}-${{ steps.node.outputs.node-version }}
       - run: make envfile _clean envfile

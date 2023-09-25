@@ -1,5 +1,5 @@
 locals {
-  name = "backstage-3m"
+  name = "techmod-3m"
   port = 7007
 }
 
@@ -37,8 +37,7 @@ data "aws_subnet" "private" {
 # be bootstrapped according to the simple yet essential procedure in
 # https://github.com/cloudposse/terraform-aws-tfstate-backend#usage
 module "terraform_state_backend" {
-  source  = "cloudposse/tfstate-backend/aws"
-  version = "0.38.1"
+  source = "git::https://github.com/cloudposse/terraform-aws-tfstate-backend.git?ref=99453ccfc0d01551458a29c35175b52fb0dfa906"
   #checkov:skip=CKV_AWS_119:na
   #checkov:skip=CKV_AWS_144:na
   #checkov:skip=CKV2_AWS_62:na
@@ -66,8 +65,7 @@ module "terraform_state_backend" {
 
 
 module "aurora_postgresql" {
-  source  = "terraform-aws-modules/rds-aurora/aws"
-  version = "7.7.0"
+  source = "git::https://github.com/terraform-aws-modules/terraform-aws-rds-aurora?ref=7eec8f4db8f94441e12f961c926820ea6fce1bb7"
   #checkov:skip=CKV_AWS_118:Save money
   #checkov:skip=CKV_AWS_324:Save money
   #checkov:skip=CKV_AWS_325:Save money
@@ -84,7 +82,12 @@ module "aurora_postgresql" {
   vpc_id                = data.aws_vpc.cloudboost.id
   subnets               = data.aws_subnets.private.ids
   create_security_group = true
-  allowed_cidr_blocks   = values(data.aws_subnet.private)[*].cidr_block
+
+  security_group_rules = {
+    vnet_ingress = {
+      cidr_blocks = values(data.aws_subnet.private)[*].cidr_block
+    }
+  }
 
   # monitoring_interval = 60
 
@@ -142,8 +145,7 @@ resource "aws_secretsmanager_secret_version" "postgres_password" {
 module "elasticache-memcached" {
   #checkov:skip=CKV2_AWS_5:false positive
 
-  source  = "cloudposse/elasticache-memcached/aws"
-  version = "0.16.0"
+  source = "git::https://github.com/cloudposse/terraform-aws-elasticache-memcached?ref=3af858db739aaf95779ce9a0c9c39a814db6d486"
 
   namespace   = "tm"
   stage       = "production"
@@ -166,8 +168,7 @@ module "elasticache-memcached" {
 module "ecs" {
   #checkov:skip=CKV_AWS_158:overkill
   #checkov:skip=CKV_AWS_224:overkill
-  source  = "terraform-aws-modules/ecs/aws"
-  version = "4.1.3"
+  source = "git::https://github.com/terraform-aws-modules/terraform-aws-ecs?ref=2604124d05974c2ee47ff7194d62d55ac425a3cb"
 
   cluster_name = local.name
 
@@ -237,8 +238,7 @@ module "access_logs" {
   #checkov:skip=CKV_AWS_300:we are covered
   #checkov:skip=CKV2_AWS_61:overkill
   #checkov:skip=CKV2_AWS_6:covered
-  source  = "terraform-aws-modules/s3-bucket/aws"
-  version = "3.8.2"
+  source = "git::https://github.com/terraform-aws-modules/terraform-aws-s3-bucket?ref=7263d096e3386493dc5113ad61ad0670e6c99028"
 
   bucket                         = "${local.name}-access-logs"
   acl                            = "private"
@@ -277,8 +277,7 @@ module "alb" {
   #checkov:skip=CKV_AWS_91:we are covered
   #checkov:skip=CKV_AWS_150:dont care
   #checkov:skip=CKV2_AWS_5:dont care
-  source  = "terraform-aws-modules/alb/aws"
-  version = "8.5.0"
+  source = "git::https://github.com/terraform-aws-modules/terraform-aws-alb?ref=cb8e43d456a863e954f6b97a4a821f41d4280ab8"
 
   name = local.name
 
@@ -419,8 +418,8 @@ module "ecs_alb_service_task" {
   #checkov:skip=CKV_AWS_249:covered
   #checkov:skip=CKV_AWS_111:na
   #checkov:skip=CKV_AWS_108:na
-  source  = "cloudposse/ecs-alb-service-task/aws"
-  version = "0.67.1"
+  #checkov:skip=CKV_AWS_356:na
+  source = "git::https://github.com/cloudposse/terraform-aws-ecs-alb-service-task?ref=474902c89a05d6ceda78b52f0c1f52618cda047c"
 
   namespace   = "tm"
   stage       = "production"
@@ -463,8 +462,7 @@ resource "aws_cloudwatch_log_group" "logs" {
   retention_in_days = 90
 }
 module "container_definition" {
-  source  = "cloudposse/ecs-container-definition/aws"
-  version = "0.58.2"
+  source = "git::https://github.com/cloudposse/terraform-aws-ecs-container-definition?ref=9e0307e261227d5717b4fa56896ec259c1b1947f"
 
   container_name  = local.name
   container_image = "${var.image}:${var.image_tag}"
@@ -536,8 +534,7 @@ module "tech_docs" {
   #checkov:skip=CKV2_AWS_62:overkill
   #checkov:skip=CKV_AWS_19:it is enabled
   #checkov:skip=CKV_AWS_300:we are covered
-  source  = "terraform-aws-modules/s3-bucket/aws"
-  version = "3.8.2"
+  source = "git::https://github.com/terraform-aws-modules/terraform-aws-s3-bucket?ref=7263d096e3386493dc5113ad61ad0670e6c99028"
 
   bucket                  = "${local.name}-storage"
   acl                     = "private"
