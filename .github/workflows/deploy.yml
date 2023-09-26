@@ -3,7 +3,7 @@ name: Deploy
 on:
   push:
     tags:
-      - '*' # Push events to every tag not containing /
+      - "*" # Push events to every tag not containing /
   workflow_dispatch:
 
 env:
@@ -43,7 +43,7 @@ jobs:
           docker push ${{ steps.prep.outputs.image_name }}:${{ steps.prep.outputs.tag }}
 
   deploy:
-    needs: ['publish_images']
+    needs: ["publish_images"]
     environment:
       name: production
     runs-on:
@@ -61,7 +61,7 @@ jobs:
           node-version-file: .nvmrc
       - uses: hashicorp/setup-terraform@v2
         with:
-          terraform_version: 1.4
+          terraform_version: 1.5.7
       - name: Terraform Init
         run: make _tfinit
       - name: Terraform Plan
