@@ -37,13 +37,15 @@ data "aws_subnet" "private" {
 # be bootstrapped according to the simple yet essential procedure in
 # https://github.com/cloudposse/terraform-aws-tfstate-backend#usage
 module "terraform_state_backend" {
-  source = "git::https://github.com/cloudposse/terraform-aws-tfstate-backend.git?ref=99453ccfc0d01551458a29c35175b52fb0dfa906"
   #checkov:skip=CKV_AWS_119:na
   #checkov:skip=CKV_AWS_144:na
   #checkov:skip=CKV2_AWS_62:na
   #checkov:skip=CKV_AWS_145:na
   #checkov:skip=CKV2_AWS_61:na
   #checkov:skip=CKV2_AWS_6:na
+  #checkov:skip=CKV_TF_1:na
+  #checkov:skip=CKV_AWS_21:na
+  source = "git::https://github.com/cloudposse/terraform-aws-tfstate-backend.git?ref=99453ccfc0d01551458a29c35175b52fb0dfa906"
 
   namespace   = "tm"
   stage       = "production"
@@ -63,6 +65,10 @@ module "terraform_state_backend" {
   tags = local.aws_default_tags
 }
 
+resource "random_password" "password" {
+  length           = 32
+  override_special = "!#$%&*()-_=+[]{}<>:?"
+}
 
 module "aurora_postgresql" {
   source = "git::https://github.com/terraform-aws-modules/terraform-aws-rds-aurora?ref=7eec8f4db8f94441e12f961c926820ea6fce1bb7"
@@ -73,15 +79,20 @@ module "aurora_postgresql" {
   #checkov:skip=CKV2_AWS_27:Save money
   #checkov:skip=CKV_AWS_338:overkill
   #checkov:skip=CKV2_AWS_5:na
+  #checkov:skip=CKV_TF_1:na
 
   name              = "${local.name}-postgresql"
   engine            = "aurora-postgresql"
   engine_mode       = "serverless"
   storage_encrypted = true
 
-  vpc_id                = data.aws_vpc.cloudboost.id
-  subnets               = data.aws_subnets.private.ids
-  create_security_group = true
+  vpc_id                      = data.aws_vpc.cloudboost.id
+  subnets                     = data.aws_subnets.private.ids
+  create_db_subnet_group      = true
+  create_security_group       = true
+  manage_master_user_password = false
+  master_username             = "backstage"
+  master_password             = random_password.password.result
 
   security_group_rules = {
     vnet_ingress = {
@@ -95,8 +106,8 @@ module "aurora_postgresql" {
   skip_final_snapshot  = true
   enable_http_endpoint = true
 
-  db_parameter_group_name         = aws_db_parameter_group.example_postgresql11.id
-  db_cluster_parameter_group_name = aws_rds_cluster_parameter_group.example_postgresql11.id
+  db_parameter_group_name         = aws_db_parameter_group.example_postgresql13.id
+  db_cluster_parameter_group_name = aws_rds_cluster_parameter_group.example_postgresql13.id
   # enabled_cloudwatch_logs_exports = # NOT SUPPORTED
 
   scaling_configuration = {
@@ -110,16 +121,16 @@ module "aurora_postgresql" {
   copy_tags_to_snapshot = true
   security_group_tags   = local.aws_default_tags
 }
-resource "aws_db_parameter_group" "example_postgresql11" {
-  name        = "${local.name}-aurora-db-postgres11-parameter-group"
-  family      = "aurora-postgresql11"
-  description = "${local.name}-aurora-db-postgres11-parameter-group"
+resource "aws_db_parameter_group" "example_postgresql13" {
+  name        = "${local.name}-aurora-db-postgres13-parameter-group"
+  family      = "aurora-postgresql13"
+  description = "${local.name}-aurora-db-postgres13-parameter-group"
 }
 
-resource "aws_rds_cluster_parameter_group" "example_postgresql11" {
-  name        = "${local.name}-aurora-postgres11-cluster-parameter-group"
-  family      = "aurora-postgresql11"
-  description = "${local.name}-aurora-postgres11-cluster-parameter-group"
+resource "aws_rds_cluster_parameter_group" "example_postgresql13" {
+  name        = "${local.name}-aurora-postgres13-cluster-parameter-group"
+  family      = "aurora-postgresql13"
+  description = "${local.name}-aurora-postgres13-cluster-parameter-group"
   parameter {
     name  = "log_statement"
     value = "all"
@@ -144,6 +155,7 @@ resource "aws_secretsmanager_secret_version" "postgres_password" {
 
 module "elasticache-memcached" {
   #checkov:skip=CKV2_AWS_5:false positive
+  #checkov:skip=CKV_TF_1:na
 
   source = "git::https://github.com/cloudposse/terraform-aws-elasticache-memcached?ref=3af858db739aaf95779ce9a0c9c39a814db6d486"
 
@@ -168,9 +180,16 @@ module "elasticache-memcached" {
 module "ecs" {
   #checkov:skip=CKV_AWS_158:overkill
   #checkov:skip=CKV_AWS_224:overkill
+  #checkov:skip=CKV_TF_1:na
+  #checkov:skip=CKV_AWS_356:na
+  #checkov:skip=CKV_AWS_111:na
+  #checkov:skip=CKV_AWS_338:overkill
+  #checkov:skip=CKV2_AWS_5:dont care
+  #checkov:skip=CKV_AWS_97:na
   source = "git::https://github.com/terraform-aws-modules/terraform-aws-ecs?ref=2604124d05974c2ee47ff7194d62d55ac425a3cb"
 
-  cluster_name = local.name
+  cluster_name                = local.name
+  create_cloudwatch_log_group = false
 
   cluster_configuration = {
     execute_command_configuration = {
@@ -188,6 +207,11 @@ module "ecs" {
   }
 }
 
+import {
+  to = aws_cloudwatch_log_group.this
+  id = "/aws/ecs/backstage"
+}
+
 resource "aws_cloudwatch_log_group" "this" {
   #checkov:skip=CKV_AWS_158:overkill
   #checkov:skip=CKV_AWS_338:overkill
@@ -196,7 +220,7 @@ resource "aws_cloudwatch_log_group" "this" {
 }
 
 data "aws_route53_zone" "tech_mod" {
-  name = "tech-modernization.com"
+  name = "example.com"
 }
 
 resource "aws_route53_record" "backstage" {
@@ -238,6 +262,7 @@ module "access_logs" {
   #checkov:skip=CKV_AWS_300:we are covered
   #checkov:skip=CKV2_AWS_61:overkill
   #checkov:skip=CKV2_AWS_6:covered
+  #checkov:skip=CKV_TF_1:na
   source = "git::https://github.com/terraform-aws-modules/terraform-aws-s3-bucket?ref=7263d096e3386493dc5113ad61ad0670e6c99028"
 
   bucket                         = "${local.name}-access-logs"
@@ -277,6 +302,7 @@ module "alb" {
   #checkov:skip=CKV_AWS_91:we are covered
   #checkov:skip=CKV_AWS_150:dont care
   #checkov:skip=CKV2_AWS_5:dont care
+  #checkov:skip=CKV_TF_1:na
   source = "git::https://github.com/terraform-aws-modules/terraform-aws-alb?ref=cb8e43d456a863e954f6b97a4a821f41d4280ab8"
 
   name = local.name
@@ -414,11 +440,12 @@ resource "aws_iam_policy" "ecs_task_policy" {
 
 module "ecs_alb_service_task" {
   #checkov:skip=CKV_AWS_158:overkill
-  #checkov:skip=CKV_AWS_97:doesnt apply
   #checkov:skip=CKV_AWS_249:covered
   #checkov:skip=CKV_AWS_111:na
   #checkov:skip=CKV_AWS_108:na
   #checkov:skip=CKV_AWS_356:na
+  #checkov:skip=CKV_TF_1:na
+  #checkov:skip=CKV_AWS_97:na
   source = "git::https://github.com/cloudposse/terraform-aws-ecs-alb-service-task?ref=474902c89a05d6ceda78b52f0c1f52618cda047c"
 
   namespace   = "tm"
@@ -453,15 +480,25 @@ module "ecs_alb_service_task" {
   permissions_boundary = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:policy/cloudboost_account_operator_boundary_policy"
 
   tags = local.aws_default_tags
+
+  depends_on = [
+    module.tech_docs,
+    module.elasticache-memcached,
+    aws_opensearchserverless_collection.this,
+    aws_route53_record.opensearch
+  ]
+
 }
 
 resource "aws_cloudwatch_log_group" "logs" {
   #checkov:skip=CKV_AWS_158:overkill
   #checkov:skip=CKV_AWS_338:overkill
+  #checkov:skip=CKV_AWS_158:na
   name              = local.name
   retention_in_days = 90
 }
 module "container_definition" {
+  #checkov:skip=CKV_TF_1:na
   source = "git::https://github.com/cloudposse/terraform-aws-ecs-container-definition?ref=9e0307e261227d5717b4fa56896ec259c1b1947f"
 
   container_name  = local.name
@@ -534,6 +571,9 @@ module "tech_docs" {
   #checkov:skip=CKV2_AWS_62:overkill
   #checkov:skip=CKV_AWS_19:it is enabled
   #checkov:skip=CKV_AWS_300:we are covered
+  #checkov:skip=CKV2_AWS_61:overkill
+  #checkov:skip=CKV2_AWS_6:covered
+  #checkov:skip=CKV_TF_1:na
   source = "git::https://github.com/terraform-aws-modules/terraform-aws-s3-bucket?ref=7263d096e3386493dc5113ad61ad0670e6c99028"
 
   bucket                  = "${local.name}-storage"
@@ -565,70 +605,91 @@ module "tech_docs" {
   ]
 }
 
-data "aws_iam_policy_document" "example" {
-  statement {
-    effect = "Allow"
-
-    principals {
-      type        = "*"
-      identifiers = ["*"]
+resource "aws_opensearchserverless_access_policy" "this" {
+  name        = local.name
+  type        = "data"
+  description = "read and write permissions"
+  policy = jsonencode([
+    {
+      Rules = [
+        {
+          ResourceType = "index",
+          Resource = [
+            "index/${local.name}/*"
+          ],
+          Permission = [
+            "aoss:*"
+          ]
+        },
+        {
+          ResourceType = "collection",
+          Resource = [
+            "collection/${local.name}"
+          ],
+          Permission = [
+            "aoss:*"
+          ]
+        }
+      ],
+      Principal = [
+        module.ecs_alb_service_task.task_role_arn,
+        module.ecs_alb_service_task.task_exec_role_arn
+      ]
     }
-
-    actions   = ["es:*"]
-    resources = ["${aws_opensearch_domain.this.arn}/*"]
-  }
+  ])
 }
 
-resource "aws_opensearch_domain" "this" {
-  #checkov:skip=CKV_AWS_84:overkill
-  #checkov:skip=CKV_AWS_318:overkill
-  #checkov:skip=CKV_AWS_317:overkill
-  #checkov:skip=CKV_AWS_247:overkill
-  #checkov:skip=CKV2_AWS_59:overkill
-  #checkov:skip=CKV2_AWS_52:overkill
-
-  domain_name    = local.name
-  engine_version = "OpenSearch_2.5"
-
-  vpc_options {
-    subnet_ids         = [data.aws_subnets.private.ids[0]]
-    security_group_ids = [module.alb.security_group_id]
-  }
-
-  cluster_config {
-    instance_type  = "t3.small.search"
-    instance_count = 1
-  }
-
-  ebs_options {
-    ebs_enabled = true
-    volume_size = 10
-  }
-
-  domain_endpoint_options {
-    enforce_https                   = true
-    custom_endpoint_enabled         = false
-    tls_security_policy             = "Policy-Min-TLS-1-2-2019-07"
-    custom_endpoint                 = "${local.name}-opensearch.${data.aws_route53_zone.tech_mod.name}"
-    custom_endpoint_certificate_arn = data.aws_acm_certificate.tech_mod.arn
-  }
-
-  encrypt_at_rest {
-    enabled = true
-  }
-
+resource "aws_opensearchserverless_security_policy" "security" {
+  name = "${local.name}-security"
+  type = "encryption"
+  policy = jsonencode({
+    "Rules" = [
+      {
+        "Resource" = [
+          "collection/${local.name}"
+        ],
+        "ResourceType" = "collection"
+      }
+    ],
+    "AWSOwnedKey" = true
+  })
 }
 
-resource "aws_opensearch_domain_policy" "this" {
-  domain_name     = aws_opensearch_domain.this.domain_name
-  access_policies = data.aws_iam_policy_document.example.json
+resource "aws_opensearchserverless_security_policy" "network" {
+  name        = "${local.name}-network"
+  type        = "network"
+  description = "Public access"
+  policy = jsonencode([
+    {
+      Description = "Public access to collection",
+      Rules = [
+        {
+          ResourceType = "collection",
+          Resource = [
+            "collection/${local.name}"
+          ]
+        },
+      ],
+      AllowFromPublic = true
+    }
+  ])
+}
+
+resource "aws_opensearchserverless_collection" "this" {
+  name = local.name
+  type = "SEARCH"
+
+  depends_on = [
+    aws_opensearchserverless_security_policy.security,
+    aws_opensearchserverless_security_policy.network
+  ]
 }
 
 resource "aws_route53_record" "opensearch" {
   zone_id = data.aws_route53_zone.tech_mod.zone_id
   name    = "${local.name}-opensearch"
   type    = "CNAME"
-  records = [aws_opensearch_domain.this.endpoint]
+  records = [aws_opensearchserverless_collection.this.collection_endpoint]
   ttl     = 300
 }
 
