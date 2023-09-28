@@ -207,11 +207,6 @@ module "ecs" {
   }
 }
 
-import {
-  to = aws_cloudwatch_log_group.this
-  id = "/aws/ecs/backstage"
-}
-
 resource "aws_cloudwatch_log_group" "this" {
   #checkov:skip=CKV_AWS_158:overkill
   #checkov:skip=CKV_AWS_338:overkill
@@ -431,6 +426,17 @@ data "aws_iam_policy_document" "ecs_task_policy" {
       "${module.tech_docs.s3_bucket_arn}/*"
     ]
   }
+  statement {
+    effect = "Allow"
+    actions = [
+      "aoss:*",
+    ]
+
+    resources = [
+      aws_opensearchserverless_collection.this.arn
+    ]
+  }
+
 }
 
 resource "aws_iam_policy" "ecs_task_policy" {
@@ -632,8 +638,7 @@ resource "aws_opensearchserverless_access_policy" "this" {
         }
       ],
       Principal = [
-        module.ecs_alb_service_task.task_role_arn,
-        module.ecs_alb_service_task.task_exec_role_arn
+        module.ecs_alb_service_task.task_role_arn
       ]
     }
   ])
