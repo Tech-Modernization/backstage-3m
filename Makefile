@@ -63,7 +63,7 @@ dev: ## runs the dev app
 .PHONY: dev
 
 _dev:
-	yarn dev
+	yarn start
 .PHONY: _dev
 
 fmt: ## formats files
