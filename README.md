@@ -7,6 +7,7 @@ Spotify Backstage accelerator to generate a 3 Musketeers friendly Backstage appl
 To generate your own Backstage application, fork this repo and run:
 
 ```sh
+ENVFILE=env.example make envfile
 make bootstrap
 ```
 
