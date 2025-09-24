@@ -145,7 +145,7 @@ resource "aws_rds_cluster_parameter_group" "this" {
 resource "aws_secretsmanager_secret" "postgres_password" {
   #checkov:skip=CKV2_AWS_57:not supported
   #checkov:skip=CKV_AWS_149:overkill
-  name = "rds/postgres/${local.name}"
+  name = "rds/postgres/${local.name}-secret"
 }
 
 resource "aws_secretsmanager_secret_version" "postgres_password" {
@@ -264,7 +264,6 @@ module "access_logs" {
   source = "git::https://github.com/terraform-aws-modules/terraform-aws-s3-bucket?ref=c375418373496865e2770ad8aabfaf849d4caee5"
 
   bucket                         = "${local.name}-access-logs"
-  acl                            = "private"
   block_public_acls              = true
   block_public_policy            = true
   ignore_public_acls             = true
@@ -577,7 +576,6 @@ module "tech_docs" {
   source = "git::https://github.com/terraform-aws-modules/terraform-aws-s3-bucket?ref=c375418373496865e2770ad8aabfaf849d4caee5"
 
   bucket                  = "${local.name}-storage"
-  acl                     = "private"
   block_public_acls       = true
   block_public_policy     = true
   ignore_public_acls      = true
