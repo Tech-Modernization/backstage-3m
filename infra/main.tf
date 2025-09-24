@@ -1,5 +1,5 @@
 locals {
-  name = "techmod-3m"
+  name = "techmod-backstage"
   port = 7007
 }
 
@@ -45,16 +45,20 @@ module "terraform_state_backend" {
   #checkov:skip=CKV2_AWS_6:na
   #checkov:skip=CKV_TF_1:na
   #checkov:skip=CKV_AWS_21:na
+  #checkov:skip=CKV_AWS_18:na
   source = "git::https://github.com/cloudposse/terraform-aws-tfstate-backend.git?ref=d994491dfe629eb4d0156aba1758c21a75f61ca8"
 
   namespace   = "tm"
   stage       = "production"
   name        = local.name
-  environment = data.aws_region.current.name
+  environment = data.aws_region.current.region
 
   attributes = ["state"]
 
-  enable_public_access_block = true
+  terraform_backend_config_file_path = "."
+  terraform_backend_config_file_name = "backend.tf"
+  enable_public_access_block         = true
+  terraform_version                  = "~> 1.10.0"
 
   force_destroy = false
 
@@ -151,6 +155,8 @@ resource "aws_secretsmanager_secret_version" "postgres_password" {
 
 module "elasticache-valkey" {
   #checkov:skip=CKV2_AWS_5:false positive
+  #checkov:skip=CKV_AWS_29:false positive
+  #checkov:skip=CKV_AWS_30:false positive
   #checkov:skip=CKV_TF_1:na
 
   source = "git::https://github.com/cloudposse/terraform-aws-elasticache-redis?ref=e87f1f03df134f68ecee1c5602d3df1a9156edd3"
@@ -158,16 +164,16 @@ module "elasticache-valkey" {
   namespace   = "tm"
   stage       = "production"
   name        = local.name
-  environment = data.aws_region.current.name
+  environment = data.aws_region.current.region
 
-  serverless_enabled = true
-  engine             = "valkey"
+  serverless_enabled              = true
+  engine                          = "valkey"
+  serverless_major_engine_version = "8"
 
-  availability_zone       = values(data.aws_subnet.private)[0].availability_zone
   vpc_id                  = data.aws_vpc.cloudboost.id
   allowed_security_groups = data.aws_security_groups.default.ids
   subnets                 = data.aws_subnets.private.ids
-  zone_id                 = data.aws_route53_zone.tech_mod.zone_id
+  zone_id                 = data.aws_route53_zone.this.zone_id
   dns_subdomain           = "${local.name}-valkey"
 
   tags = local.aws_default_tags
@@ -197,7 +203,7 @@ module "ecs" {
   }
 
   # Capacity provider
-  fargate_capacity_providers = {
+  default_capacity_provider_strategy = {
     FARGATE_SPOT = {
     }
   }
@@ -211,7 +217,7 @@ resource "aws_cloudwatch_log_group" "this" {
 }
 
 data "aws_route53_zone" "this" {
-  name = "example.com"
+  name = "tech-modernization.com"
 }
 
 resource "aws_route53_record" "backstage" {
@@ -220,8 +226,8 @@ resource "aws_route53_record" "backstage" {
   name    = "backstage"
   type    = "A"
   alias {
-    name                   = module.alb.lb_dns_name
-    zone_id                = module.alb.lb_zone_id
+    name                   = module.alb.dns_name
+    zone_id                = module.alb.zone_id
     evaluate_target_health = true
   }
 }
@@ -309,72 +315,69 @@ module "alb" {
   vpc_id          = data.aws_vpc.cloudboost.id
   subnets         = data.aws_subnets.public.ids
   security_groups = data.aws_security_groups.default.ids
-  security_group_rules = {
+  security_group_ingress_rules = {
     ingress_all_http = {
-      type        = "ingress"
       from_port   = 80
       to_port     = 80
       protocol    = "tcp"
       description = "HTTP web traffic"
-      cidr_blocks = ["0.0.0.0/0"]
+      cidr_ipv4   = "0.0.0.0/0"
     }
     ingress_all_https = {
-      type        = "ingress"
       from_port   = 443
       to_port     = 443
       protocol    = "tcp"
       description = "HTTPS web traffic"
-      cidr_blocks = ["0.0.0.0/0"]
+      cidr_ipv4   = "0.0.0.0/0"
     }
+  }
+
+  security_group_egress_rules = {
     egress_all = {
-      type        = "egress"
-      from_port   = 0
-      to_port     = 0
-      protocol    = "-1"
-      cidr_blocks = ["0.0.0.0/0"]
+      type      = "egress"
+      from_port = 0
+      to_port   = 0
+      protocol  = "-1"
+      cidr_ipv4 = "0.0.0.0/0"
     }
   }
   enable_http2 = true
   internal     = true
 
-  target_groups = [
-    {
-      name_prefix      = "tmbs-"
-      backend_protocol = "HTTP"
-      backend_port     = 7007
-      target_type      = "ip"
+  target_groups = {
+    instance = {
+      name_prefix       = "tmbs-"
+      backend_protocol  = "HTTP"
+      backend_port      = 7007
+      target_type       = "ip"
+      create_attachment = false
       health_check = {
         path = "/.backstage/health/v1/liveness"
       }
     }
-  ]
-  listener_ssl_policy_default = "ELBSecurityPolicy-TLS13-1-2-2021-06"
-  https_listeners = [
-    {
-      port               = 443
-      protocol           = "HTTPS"
-      certificate_arn    = data.aws_acm_certificate.tech_mod.arn
-      target_group_index = 0
-    }
-  ]
 
-  http_tcp_listeners = [
-    {
-      port        = 80
-      protocol    = "HTTP"
-      action_type = "redirect"
+  }
+  listeners = {
+    https = {
+      port            = 443
+      protocol        = "HTTPS"
+      certificate_arn = data.aws_acm_certificate.tech_mod.arn
+      forward = {
+        target_group_key = "instance"
+      }
+    }
+    http-redirect = {
+      port     = 80
+      protocol = "HTTP"
       redirect = {
         port        = "443"
         protocol    = "HTTPS"
         status_code = "HTTP_301"
       }
     }
-  ]
+  }
 
-  security_group_tags          = local.aws_default_tags
-  target_group_tags            = local.aws_default_tags
-  https_listener_rules_tags    = local.aws_default_tags
-  http_tcp_listener_rules_tags = local.aws_default_tags
+  security_group_tags = local.aws_default_tags
 }
 
 
@@ -396,7 +399,7 @@ data "aws_iam_policy_document" "ecs_task_execution_policy" {
     resources = [
       data.aws_secretsmanager_secret.ghcr.arn,
       data.aws_secretsmanager_secret.backstage_app.arn,
-      aws_secretsmanager_secret_version.postgres_password.arn
+      aws_secretsmanager_secret_version.postgres_password.arn,
     ]
   }
 }
@@ -425,17 +428,6 @@ data "aws_iam_policy_document" "ecs_task_policy" {
       "${module.tech_docs.s3_bucket_arn}/*"
     ]
   }
-  statement {
-    effect = "Allow"
-    actions = [
-      "aoss:*",
-    ]
-
-    resources = [
-      aws_opensearchserverless_collection.this.arn
-    ]
-  }
-
 }
 
 resource "aws_iam_policy" "ecs_task_policy" {
@@ -451,18 +443,19 @@ module "ecs_alb_service_task" {
   #checkov:skip=CKV_AWS_356:na
   #checkov:skip=CKV_TF_1:na
   #checkov:skip=CKV_AWS_97:na
+  #checkov:skip=CKV_AWS_382:na
   source = "git::https://github.com/cloudposse/terraform-aws-ecs-alb-service-task?ref=f0a0cfa6efb4c7fb354068d326d58085a8749e26"
 
   namespace   = "tm"
   stage       = "production"
   name        = local.name
-  environment = data.aws_region.current.name
+  environment = data.aws_region.current.region
   ecs_load_balancers = [
     {
       container_name   = local.name
       container_port   = local.port
       elb_name         = ""
-      target_group_arn = module.alb.target_group_arns[0]
+      target_group_arn = module.alb.target_groups["instance"].arn
     }
   ]
 
@@ -489,7 +482,7 @@ module "ecs_alb_service_task" {
   depends_on = [
     module.tech_docs,
     module.elasticache-valkey,
-    aws_opensearchserverless_collection.this,
+    aws_opensearch_domain.this,
     aws_route53_record.opensearch
   ]
 
@@ -515,7 +508,7 @@ module "container_definition" {
   log_configuration = {
     logDriver = "awslogs"
     options = {
-      awslogs-region        = data.aws_region.current.name
+      awslogs-region        = data.aws_region.current.region
       awslogs-group         = resource.aws_cloudwatch_log_group.logs.name
       awslogs-stream-prefix = local.name
     }
@@ -610,90 +603,67 @@ module "tech_docs" {
   ]
 }
 
-resource "aws_opensearchserverless_access_policy" "this" {
-  name        = local.name
-  type        = "data"
-  description = "read and write permissions"
-  policy = jsonencode([
-    {
-      Rules = [
-        {
-          ResourceType = "index",
-          Resource = [
-            "index/${local.name}/*"
-          ],
-          Permission = [
-            "aoss:*"
-          ]
-        },
-        {
-          ResourceType = "collection",
-          Resource = [
-            "collection/${local.name}"
-          ],
-          Permission = [
-            "aoss:*"
-          ]
-        }
-      ],
-      Principal = [
-        module.ecs_alb_service_task.task_role_arn
-      ]
+resource "aws_opensearch_domain" "this" {
+  #checkov:skip=CKV_AWS_84:overkill
+  #checkov:skip=CKV_AWS_318:overkill
+  #checkov:skip=CKV_AWS_317:overkill
+  #checkov:skip=CKV_AWS_247:overkill
+  #checkov:skip=CKV2_AWS_59:overkill
+  #checkov:skip=CKV2_AWS_52:overkill
+  #checkov:skip=CKV_AWS_84:overkill
+  domain_name    = local.name
+  engine_version = "OpenSearch_3.1"
+
+  vpc_options {
+    subnet_ids         = [data.aws_subnets.private.ids[0]]
+    security_group_ids = [module.alb.security_group_id]
+  }
+
+  cluster_config {
+    instance_type  = "t3.small.search"
+    instance_count = 1
+  }
+
+  ebs_options {
+    ebs_enabled = true
+    volume_size = 10
+  }
+
+  domain_endpoint_options {
+    enforce_https                   = true
+    custom_endpoint_enabled         = true
+    tls_security_policy             = "Policy-Min-TLS-1-2-2019-07"
+    custom_endpoint                 = "${local.name}-opensearch.${data.aws_route53_zone.this.name}"
+    custom_endpoint_certificate_arn = data.aws_acm_certificate.tech_mod.arn
+  }
+
+  encrypt_at_rest {
+    enabled = true
+  }
+}
+
+data "aws_iam_policy_document" "example" {
+  statement {
+    effect = "Allow"
+
+    principals {
+      type        = "*"
+      identifiers = ["*"]
     }
-  ])
+    actions   = ["es:*"]
+    resources = ["${aws_opensearch_domain.this.arn}/*"]
+  }
 }
 
-resource "aws_opensearchserverless_security_policy" "security" {
-  name = "${local.name}-security"
-  type = "encryption"
-  policy = jsonencode({
-    "Rules" = [
-      {
-        "Resource" = [
-          "collection/${local.name}"
-        ],
-        "ResourceType" = "collection"
-      }
-    ],
-    "AWSOwnedKey" = true
-  })
+resource "aws_opensearch_domain_policy" "this" {
+  domain_name     = aws_opensearch_domain.this.domain_name
+  access_policies = data.aws_iam_policy_document.example.json
 }
-
-resource "aws_opensearchserverless_security_policy" "network" {
-  name        = "${local.name}-network"
-  type        = "network"
-  description = "Public access"
-  policy = jsonencode([
-    {
-      Description = "Public access to collection",
-      Rules = [
-        {
-          ResourceType = "collection",
-          Resource = [
-            "collection/${local.name}"
-          ]
-        },
-      ],
-      AllowFromPublic = true
-    }
-  ])
-}
-
-resource "aws_opensearchserverless_collection" "this" {
-  name = local.name
-  type = "SEARCH"
-
-  depends_on = [
-    aws_opensearchserverless_security_policy.security,
-    aws_opensearchserverless_security_policy.network
-  ]
-}
-
 resource "aws_route53_record" "opensearch" {
-  zone_id = data.aws_route53_zone.tech_mod.zone_id
+  zone_id = data.aws_route53_zone.this.zone_id
   name    = "${local.name}-opensearch"
   type    = "CNAME"
-  records = [aws_opensearchserverless_collection.this.collection_endpoint]
+  records = [aws_opensearch_domain.this.endpoint]
   ttl     = 300
 }
 
