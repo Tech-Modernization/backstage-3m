@@ -42,9 +42,9 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version-file: .nvmrc
-      - uses: hashicorp/setup-terraform@v2
+      - uses: opentofu/setup-opentofu@v1
         with:
-          terraform_version: 1.5
+          tofu_version_file: .opentofu-version
       - uses: actions/cache@v3
         name: Cache plugin dir
         with:
@@ -53,7 +53,7 @@ jobs:
       - uses: terraform-linters/setup-tflint@v3
         name: Setup TFLint
         with:
-          tflint_version: v0.48.0
+          tflint_version: v0.59.1
 
       - name: Terraform fmt
         id: fmt

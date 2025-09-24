@@ -59,9 +59,9 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version-file: .nvmrc
-      - uses: hashicorp/setup-terraform@v2
+      - uses: opentofu/setup-opentofu@v1
         with:
-          terraform_version: 1.5.7
+          tofu_version_file: .opentofu-version
       - name: Terraform Init
         run: make _tfinit
       - name: Terraform Plan

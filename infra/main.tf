@@ -71,7 +71,7 @@ resource "random_password" "password" {
 }
 
 module "aurora_postgresql" {
-  source = "git::https://github.com/terraform-aws-modules/terraform-aws-rds-aurora?ref=7eec8f4db8f94441e12f961c926820ea6fce1bb7"
+  source = "git::https://github.com/terraform-aws-modules/terraform-aws-rds-aurora?ref=4025104de5268fe6063a9a95269a4e290692aa0d"
   #checkov:skip=CKV_AWS_118:Save money
   #checkov:skip=CKV_AWS_324:Save money
   #checkov:skip=CKV_AWS_325:Save money
@@ -106,13 +106,13 @@ module "aurora_postgresql" {
   skip_final_snapshot  = true
   enable_http_endpoint = true
 
-  db_parameter_group_name         = aws_db_parameter_group.example_postgresql13.id
-  db_cluster_parameter_group_name = aws_rds_cluster_parameter_group.example_postgresql13.id
+  db_parameter_group_name         = aws_db_parameter_group.this.id
+  db_cluster_parameter_group_name = aws_rds_cluster_parameter_group.this.id
   # enabled_cloudwatch_logs_exports = # NOT SUPPORTED
 
   scaling_configuration = {
     auto_pause               = true
-    min_capacity             = 2
+    min_capacity             = 0
     max_capacity             = 2
     seconds_until_auto_pause = 300
     timeout_action           = "ForceApplyCapacityChange"
@@ -121,16 +121,16 @@ module "aurora_postgresql" {
   copy_tags_to_snapshot = true
   security_group_tags   = local.aws_default_tags
 }
-resource "aws_db_parameter_group" "example_postgresql13" {
-  name        = "${local.name}-aurora-db-postgres13-parameter-group"
-  family      = "aurora-postgresql13"
-  description = "${local.name}-aurora-db-postgres13-parameter-group"
+resource "aws_db_parameter_group" "this" {
+  name        = "${local.name}-aurora-db-postgres16-parameter-group"
+  family      = "aurora-postgresql16"
+  description = "${local.name}-aurora-db-postgres16-parameter-group"
 }
 
-resource "aws_rds_cluster_parameter_group" "example_postgresql13" {
-  name        = "${local.name}-aurora-postgres13-cluster-parameter-group"
-  family      = "aurora-postgresql13"
-  description = "${local.name}-aurora-postgres13-cluster-parameter-group"
+resource "aws_rds_cluster_parameter_group" "this" {
+  name        = "${local.name}-aurora-postgres16-cluster-parameter-group"
+  family      = "aurora-postgresql16"
+  description = "${local.name}-aurora-postgres16-cluster-parameter-group"
   parameter {
     name  = "log_statement"
     value = "all"
@@ -153,26 +153,26 @@ resource "aws_secretsmanager_secret_version" "postgres_password" {
   secret_string = module.aurora_postgresql.cluster_master_password
 }
 
-module "elasticache-memcached" {
+module "elasticache-valkey" {
   #checkov:skip=CKV2_AWS_5:false positive
   #checkov:skip=CKV_TF_1:na
 
-  source = "git::https://github.com/cloudposse/terraform-aws-elasticache-memcached?ref=3af858db739aaf95779ce9a0c9c39a814db6d486"
+  source = "git::https://github.com/cloudposse/terraform-aws-elasticache-redis?ref=e87f1f03df134f68ecee1c5602d3df1a9156edd3"
 
   namespace   = "tm"
   stage       = "production"
   name        = local.name
   environment = data.aws_region.current.name
 
-  engine_version                     = "1.6.17"
-  elasticache_parameter_group_family = "memcached1.6"
+  serverless_enabled = true
+  engine             = "valkey"
 
   availability_zone       = values(data.aws_subnet.private)[0].availability_zone
   vpc_id                  = data.aws_vpc.cloudboost.id
   allowed_security_groups = data.aws_security_groups.default.ids
   subnets                 = data.aws_subnets.private.ids
   zone_id                 = data.aws_route53_zone.tech_mod.zone_id
-  dns_subdomain           = "${local.name}-memcached"
+  dns_subdomain           = "${local.name}-valkey"
 
   tags = local.aws_default_tags
 }
@@ -186,7 +186,7 @@ module "ecs" {
   #checkov:skip=CKV_AWS_338:overkill
   #checkov:skip=CKV2_AWS_5:dont care
   #checkov:skip=CKV_AWS_97:na
-  source = "git::https://github.com/terraform-aws-modules/terraform-aws-ecs?ref=2604124d05974c2ee47ff7194d62d55ac425a3cb"
+  source = "git::https://github.com/terraform-aws-modules/terraform-aws-ecs?ref=da21601d299e72524d0e7b1a30ccc8962a767aa8"
 
   cluster_name                = local.name
   create_cloudwatch_log_group = false
@@ -214,13 +214,13 @@ resource "aws_cloudwatch_log_group" "this" {
   retention_in_days = 7
 }
 
-data "aws_route53_zone" "tech_mod" {
+data "aws_route53_zone" "this" {
   name = "example.com"
 }
 
 resource "aws_route53_record" "backstage" {
   #checkov:skip=CKV2_AWS_23:na
-  zone_id = data.aws_route53_zone.tech_mod.zone_id
+  zone_id = data.aws_route53_zone.this.zone_id
   name    = "backstage"
   type    = "A"
   alias {
@@ -258,7 +258,7 @@ module "access_logs" {
   #checkov:skip=CKV2_AWS_61:overkill
   #checkov:skip=CKV2_AWS_6:covered
   #checkov:skip=CKV_TF_1:na
-  source = "git::https://github.com/terraform-aws-modules/terraform-aws-s3-bucket?ref=7263d096e3386493dc5113ad61ad0670e6c99028"
+  source = "git::https://github.com/terraform-aws-modules/terraform-aws-s3-bucket?ref=c375418373496865e2770ad8aabfaf849d4caee5"
 
   bucket                         = "${local.name}-access-logs"
   acl                            = "private"
@@ -298,7 +298,7 @@ module "alb" {
   #checkov:skip=CKV_AWS_150:dont care
   #checkov:skip=CKV2_AWS_5:dont care
   #checkov:skip=CKV_TF_1:na
-  source = "git::https://github.com/terraform-aws-modules/terraform-aws-alb?ref=cb8e43d456a863e954f6b97a4a821f41d4280ab8"
+  source = "git::https://github.com/terraform-aws-modules/terraform-aws-alb?ref=c812e70f65fe20bbbb28ced8e7745d638a47d4c9"
 
   name = local.name
 
@@ -452,7 +452,7 @@ module "ecs_alb_service_task" {
   #checkov:skip=CKV_AWS_356:na
   #checkov:skip=CKV_TF_1:na
   #checkov:skip=CKV_AWS_97:na
-  source = "git::https://github.com/cloudposse/terraform-aws-ecs-alb-service-task?ref=474902c89a05d6ceda78b52f0c1f52618cda047c"
+  source = "git::https://github.com/cloudposse/terraform-aws-ecs-alb-service-task?ref=f0a0cfa6efb4c7fb354068d326d58085a8749e26"
 
   namespace   = "tm"
   stage       = "production"
@@ -489,7 +489,7 @@ module "ecs_alb_service_task" {
 
   depends_on = [
     module.tech_docs,
-    module.elasticache-memcached,
+    module.elasticache-valkey,
     aws_opensearchserverless_collection.this,
     aws_route53_record.opensearch
   ]
@@ -505,7 +505,7 @@ resource "aws_cloudwatch_log_group" "logs" {
 }
 module "container_definition" {
   #checkov:skip=CKV_TF_1:na
-  source = "git::https://github.com/cloudposse/terraform-aws-ecs-container-definition?ref=9e0307e261227d5717b4fa56896ec259c1b1947f"
+  source = "git::https://github.com/cloudposse/terraform-aws-ecs-container-definition?ref=dc9c21a3a592e23703fa67f93187944e7fb0aac8"
 
   container_name  = local.name
   container_image = "${var.image}:${var.image_tag}"
@@ -580,7 +580,7 @@ module "tech_docs" {
   #checkov:skip=CKV2_AWS_61:overkill
   #checkov:skip=CKV2_AWS_6:covered
   #checkov:skip=CKV_TF_1:na
-  source = "git::https://github.com/terraform-aws-modules/terraform-aws-s3-bucket?ref=7263d096e3386493dc5113ad61ad0670e6c99028"
+  source = "git::https://github.com/terraform-aws-modules/terraform-aws-s3-bucket?ref=c375418373496865e2770ad8aabfaf849d4caee5"
 
   bucket                  = "${local.name}-storage"
   acl                     = "private"

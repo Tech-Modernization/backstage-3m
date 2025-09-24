@@ -14,7 +14,7 @@ services:
     depends_on:
       - backstagedb
   node:
-    image: node:18
+    image: node:22
     user: node
     profiles:
       - node
@@ -31,14 +31,14 @@ services:
     env_file: .env
   backstagedb:
     container_name: backstagedb
-    image: "postgres:11"
+    image: "postgres:16"
     env_file: .env
     ports:
       - 5432:5432
     volumes:
       - "${DB_LOCAL_PATH}:/var/lib/postgresql/data"
   terraform:
-    image: hashicorp/terraform:1.5.7
+    image: ghcr.io/opentofu/opentofu:1.10.6
     profiles:
       - build
     volumes:
@@ -48,7 +48,7 @@ services:
     working_dir: /opt/app/infra
     env_file: .env
   tflint:
-    image: ghcr.io/terraform-linters/tflint:v0.48.0
+    image: ghcr.io/terraform-linters/tflint:v0.59.1
     profiles:
       - build
     volumes:
@@ -56,7 +56,7 @@ services:
     working_dir: /opt/app/infra
     env_file: .env
   checkov:
-    image: bridgecrew/checkov:2
+    image: bridgecrew/checkov:3
     profiles:
       - build
     volumes:
