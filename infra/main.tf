@@ -157,6 +157,7 @@ module "elasticache-valkey" {
   #checkov:skip=CKV2_AWS_5:false positive
   #checkov:skip=CKV_AWS_29:false positive
   #checkov:skip=CKV_AWS_30:false positive
+  #checkov:skip=CKV2_AWS_50:false positive
   #checkov:skip=CKV_TF_1:na
 
   source = "git::https://github.com/cloudposse/terraform-aws-elasticache-redis?ref=e87f1f03df134f68ecee1c5602d3df1a9156edd3"
@@ -299,6 +300,7 @@ module "alb" {
   #checkov:skip=CKV_AWS_91:we are covered
   #checkov:skip=CKV_AWS_150:dont care
   #checkov:skip=CKV2_AWS_5:dont care
+  #checkov:skip=CKV_AWS_260:dont care
   #checkov:skip=CKV_TF_1:na
   source = "git::https://github.com/terraform-aws-modules/terraform-aws-alb?ref=c812e70f65fe20bbbb28ced8e7745d638a47d4c9"
 

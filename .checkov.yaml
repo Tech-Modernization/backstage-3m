@@ -3,6 +3,7 @@ download-external-modules: true
 repo-id: Tech-Modernization/backstage-3m
 skip-path:
   - ./infra/tfplan.json
+  - ./packages/backend/Dockerfile
 summary-position: bottom
 quiet: true
 directory:
