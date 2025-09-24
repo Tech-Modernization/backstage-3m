@@ -45,7 +45,7 @@ module "terraform_state_backend" {
   #checkov:skip=CKV2_AWS_6:na
   #checkov:skip=CKV_TF_1:na
   #checkov:skip=CKV_AWS_21:na
-  source = "git::https://github.com/cloudposse/terraform-aws-tfstate-backend.git?ref=99453ccfc0d01551458a29c35175b52fb0dfa906"
+  source = "git::https://github.com/cloudposse/terraform-aws-tfstate-backend.git?ref=d994491dfe629eb4d0156aba1758c21a75f61ca8"
 
   namespace   = "tm"
   stage       = "production"
@@ -54,13 +54,9 @@ module "terraform_state_backend" {
 
   attributes = ["state"]
 
-  billing_mode               = "PAY_PER_REQUEST"
-  terraform_version          = "1.3.9"
   enable_public_access_block = true
 
-  terraform_backend_config_file_path = "."
-  terraform_backend_config_file_name = "backend.tf"
-  force_destroy                      = false
+  force_destroy = false
 
   tags = local.aws_default_tags
 }
