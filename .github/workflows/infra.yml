@@ -5,18 +5,18 @@ on:
     branches:
       - main
     paths-ignore:
-      - "**.md"
+      - '**.md'
   pull_request:
     types: [opened, reopened, synchronize]
     branches:
       - main
     paths:
-      - "Makefile"
-      - "docker-compose.yaml"
-      - ".checkov.yaml"
-      - ".terraform.version"
-      - ".github/workflows/infra.yml"
-      - "infra/**"
+      - 'Makefile'
+      - 'docker-compose.yaml'
+      - '.checkov.yaml'
+      - '.terraform.version'
+      - '.github/workflows/infra.yml'
+      - 'infra/**'
 
 env:
   REGISTRY: ghcr.io
