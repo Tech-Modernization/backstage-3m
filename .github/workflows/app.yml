@@ -30,7 +30,7 @@ jobs:
     env:
       CI: true
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v5
       - name: Setup node
         id: node
         uses: actions/setup-node@v3

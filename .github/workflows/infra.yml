@@ -36,7 +36,7 @@ jobs:
       pull-requests: write
       security-events: write
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v5
       # needed for terraform fmt
       - name: Setup node
         uses: actions/setup-node@v3
