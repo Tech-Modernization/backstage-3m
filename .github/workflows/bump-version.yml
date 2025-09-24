@@ -23,10 +23,10 @@ jobs:
         with:
           ssh-key: ${{ secrets.PUSH_TAGS_PRIVATE_KEY }} # https://docs.github.com/en/actions/security-guides/automatic-token-authentication#using-the-github_token-in-a-workflow
           persist-credentials: true
-          fetch-depth: '0'
+          fetch-depth: "0"
       - name: Bump version
         id: bump-version
-        uses: anothrNick/github-tag-action@1.75.0
+        uses: anothrNick/github-tag-action@1.61.0
         env:
           RELEASE_BRANCHES: main
           DRY_RUN: true
