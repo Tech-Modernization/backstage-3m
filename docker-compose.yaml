@@ -37,7 +37,7 @@ services:
       - 5432:5432
     volumes:
       - "${DB_LOCAL_PATH}:/var/lib/postgresql/data"
-  terraform:
+  tofu:
     image: ghcr.io/opentofu/opentofu:1.10.6
     profiles:
       - build

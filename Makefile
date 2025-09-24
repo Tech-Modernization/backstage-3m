@@ -1,7 +1,7 @@
 .DEFAULT_GOAL := help
 COMPOSE_RUN_NODE := docker compose run --rm node
 COMPOSE_RUN_YQ := docker compose run --rm yq
-COMPOSE_RUN_TF := docker compose run --rm terraform
+COMPOSE_RUN_TF := docker compose run --rm tofu
 COMPOSE_RUN_TFLINT := docker compose run --rm tflint
 COMPOSE_RUN_CHECKOV := docker compose run --rm checkov
 COMPOSE_BUILD_BACKSTAGE := docker compose build backstage
@@ -114,15 +114,15 @@ run: ## run docker image
 	$(COMPOSE_UP_BACKSTAGE)
 .PHONY: run
 
-tffmt: ## format terraform
+tffmt: ## format tofu
 	$(COMPOSE_RUN_TF) fmt -recursive -check
 .PHONY: tffmt
 
 _tffmt:
-	cd infra && terraform fmt -recursive -check
+	cd infra && tofu fmt -recursive -check
 .PHONY: _tffmt
 
-tflint: ## lint terraform
+tflint: ## lint tofu
 	$(COMPOSE_RUN_TFLINT) --init
 	$(COMPOSE_RUN_TFLINT)
 .PHONY: tflint
@@ -131,20 +131,20 @@ _tflint:
 	cd infra && tflint --init && tflint
 .PHONY: _tflint
 
-tfinit: ## init terraform
+tfinit: ## init tofu
 	$(COMPOSE_RUN_TF) init
 .PHONY: tfinit
 
 _tfinit:
-	cd infra && terraform init
+	cd infra && tofu init
 .PHONY: _tfinit
 
-tfvalidate: ## validate terraform
+tfvalidate: ## validate tofu
 	$(COMPOSE_RUN_TF) validate -no-color
 .PHONY: tfvalidate
 
 _tfvalidate:
-	cd infra && terraform validate -no-color
+	cd infra && tofu validate -no-color
 .PHONY: _tfvalidate
 
 checkov: ## run checkov
@@ -155,14 +155,14 @@ _checkov:
 	checkov --show-config
 .PHONY: _checkov
 
-tfplan: ## plan terraform
+tfplan: ## plan tofu
 	$(COMPOSE_RUN_TF) plan -no-color -input=false -out tfplan.out
 	$(COMPOSE_RUN_TF) show -json tfplan.out > infra/tfplan.json
 	$(COMPOSE_RUN_TF) show -no-color tfplan.out > infra/tfplan.txt
 .PHONY: tfplan
 
 _tfplan:
-	cd infra && terraform plan -no-color -input=false -out tfplan.out && terraform show -json tfplan.out > tfplan.json && terraform show -no-color tfplan.out > tfplan.txt
+	cd infra && tofu plan -no-color -input=false -out tfplan.out && tofu show -json tfplan.out > tfplan.json && tofu show -no-color tfplan.out > tfplan.txt
 .PHONY: _tfplan
 
 tfapply:
@@ -170,7 +170,7 @@ tfapply:
 .PHONY: tfapply
 
 _tfapply:
-	cd infra && terraform apply -input=false tfplan.out
+	cd infra && tofu apply -input=false tfplan.out
 .PHONY: _tfapply
 
 cleanDocker: ## Tear down docker
@@ -184,7 +184,7 @@ clean: ## Clean up the workspace
 
 _clean:
 	yarn clean
-	rm -rf infra/tfplan.* results.sarif infra/terraform.tfstate*
+	rm -rf infra/tfplan.* results.sarif infra/tofu.tfstate*
 .PHONY: _clean
 
 upgrade: ## Upgrade Backstage version

@@ -344,7 +344,7 @@ module "alb" {
       backend_port     = 7007
       target_type      = "ip"
       health_check = {
-        path = "/healthcheck"
+        path = "/.backstage/health/v1/liveness"
       }
     }
   ]
@@ -414,7 +414,10 @@ data "aws_iam_policy_document" "ecs_task_policy" {
       "s3:GetObject",
       "s3:ListAllMyBuckets",
       "s3:ListBucket",
-      "s3:HeadBucket"
+      "s3:HeadBucket",
+      "s3:DeleteObject",
+      "s3:DeleteObjectVersion",
+      "s3:PutBucketAcl"
     ]
 
     resources = [
